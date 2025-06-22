@@ -1,4 +1,3 @@
-// Example: index.js (Node.js backend)
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
@@ -9,10 +8,10 @@ app.use(cors());
 app.use(express.json());
 
 app.post('/api/contact', async (req, res) => {
-  const { name, email, message } = req.body;
+  const { name, email, business, websiteType, features, message } = req.body;
 
-  if (!name || !email || !message)
-    return res.status(400).json({ error: 'All fields are required.' });
+  if (!name || !email || !websiteType || !message)
+    return res.status(400).json({ error: 'Required fields are missing.' });
 
   try {
     const transporter = nodemailer.createTransport({
@@ -23,12 +22,25 @@ app.post('/api/contact', async (req, res) => {
       },
     });
 
+    const mailBody = `
+New Custom Website Order
+
+Name: ${name}
+Email: ${email}
+Business/Organization: ${business || 'N/A'}
+Website Type: ${websiteType}
+Desired Features: ${features || 'N/A'}
+
+Message:
+${message}
+    `;
+
     await transporter.sendMail({
-      from: `"Portfolio Contact" <${process.env.EMAIL_USER}>`,
+      from: `"Website Order" <${process.env.EMAIL_USER}>`,
       to: process.env.TO_EMAIL,
-      subject: `New message from ${name}`,
-      text: `You have a new message from your portfolio contact form:\n\nName: ${name}\nEmail: ${email}\n\nMessage:\n${message}`,
-      replyTo: email, // This allows you to reply directly to the sender
+      subject: `New Website Order from ${name}`,
+      text: mailBody,
+      replyTo: email,
     });
 
     res.json({ success: true });
