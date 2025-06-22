@@ -1,3 +1,4 @@
+// Example: index.js (Node.js backend)
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
@@ -26,8 +27,8 @@ app.post('/api/contact', async (req, res) => {
       from: `"Portfolio Contact" <${process.env.EMAIL_USER}>`,
       to: process.env.TO_EMAIL,
       subject: `New message from ${name}`,
-      text: `From: ${name} <${email}>\n\n${message}`,
-      replyTo: email,
+      text: `You have a new message from your portfolio contact form:\n\nName: ${name}\nEmail: ${email}\n\nMessage:\n${message}`,
+      replyTo: email, // This allows you to reply directly to the sender
     });
 
     res.json({ success: true });
