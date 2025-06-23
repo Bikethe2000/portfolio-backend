@@ -43,6 +43,31 @@ ${message}
       replyTo: email,
     });
 
+    // Auto-reply to customer (English)
+    const autoReplyBody = `
+${name ? `Dear ${name},` : 'Dear Customer,'}
+
+Thank you for contacting us and for your interest in building your website. We have received your request and will process it promptly.
+
+✅ Payment Information:
+You will soon receive an offer with the total cost and payment details. The process will begin as soon as the deposit is completed.
+
+✅ What happens after payment:
+Once your payment is confirmed, we will immediately start working on your website and keep you updated on the progress or any clarifications needed.
+
+We are at your disposal for any questions or clarifications.
+
+Best regards,
+Coded Together's team
+    `;
+
+    await transporter.sendMail({
+      from: `"Website Order" <${process.env.EMAIL_USER}>`,
+      to: email,
+      subject: 'Confirmation of Request Received - Website Development',
+      text: autoReplyBody,
+    });
+
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: 'Failed to send email.' });
