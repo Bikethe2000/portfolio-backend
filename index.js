@@ -111,44 +111,86 @@ app.post('/create-payment-intent', async (req, res) => {
   }
 });
 
-app.post('/send-order-email', async (req, res) => {
+const { v4: uuidv4 } = require("uuid");
+
+app.post("/send-order-email", async (req, res) => {
   const { email, packageName, amount } = req.body;
 
   if (!email || !packageName || !amount) {
-    return res.status(400).json({ error: 'Missing required fields.' });
+    return res.status(400).json({ error: "Missing required fields." });
   }
 
   try {
+    const orderId = uuidv4(); // Δημιουργία μοναδικού Order ID
+
     const transporter = nodemailer.createTransport({
-      service: 'gmail',
+      service: "gmail",
       auth: {
         user: process.env.EMAIL_USER,
         pass: process.env.EMAIL_PASS,
       },
     });
 
-    const mailBody = `
-New Website Order Paid
-
-Customer email: ${email}
-Package: ${packageName}
-Amount Paid: ${amount}€
-
+    const adminMailBody = `
+New Website Order Paid<br/>
+<br/>
+<b>Order ID:</b> ${orderId}<br/>
+<b>Customer email:</b> ${email}<br/>
+<b>Package:</b> ${packageName}<br/>
+<b>Amount Paid:</b> ${amount}€
+<br/><br/>
 Please contact the customer to proceed.
-    `;
+`;
+
+    const customerMailBody = `
+<!DOCTYPE html>
+<html>
+<head>
+  <style>
+    body { font-family: Arial, sans-serif; background-color: #f9f9f9; color: #333; padding: 20px; }
+    .container { background-color: white; border-radius: 8px; padding: 20px; max-width: 600px; margin: auto; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+    h2 { color: #4CAF50; }
+    p { font-size: 16px; }
+    .footer { margin-top: 30px; font-size: 14px; color: #777; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>Thank you for your purchase!</h2>
+    <p>Dear Customer,</p>
+    <p>We have received your payment for the <b>${packageName}</b> package.</p>
+    <p><b>Order ID:</b> ${orderId}</p>
+    <p><b>Amount Paid:</b> ${amount}€</p>
+    <p>We will contact you shortly to start working on your project.</p>
+    <p>If you have any questions, feel free to reply to this email.</p>
+    <div class="footer">
+      Best regards,<br/>
+      The CodedTogether Team
+    </div>
+  </div>
+</body>
+</html>
+`;
 
     await transporter.sendMail({
       from: `"Website Orders" <${process.env.EMAIL_USER}>`,
       to: process.env.TO_EMAIL,
-      subject: `New Paid Order: ${packageName}`,
-      text: mailBody,
+      subject: `New Paid Order: ${packageName} (Order ID: ${orderId})`,
+      html: adminMailBody.replace(/\n/g, "<br/>"),
       replyTo: email,
     });
 
-    res.json({ success: true });
+    await transporter.sendMail({
+      from: `"CodedTogether" <${process.env.EMAIL_USER}>`,
+      to: email,
+      subject: `Thank you for your purchase! (Order ID: ${orderId})`,
+      html: customerMailBody,
+    });
+
+    res.json({ success: true, orderId });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: 'Failed to send notification email.' });
+    res.status(500).json({ error: "Failed to send notification email." });
   }
 });
 
