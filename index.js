@@ -8,7 +8,7 @@ app.use(cors());
 app.use(express.json());
 
 app.post('/api/contact', async (req, res) => {
-  const { name, email, business, websiteType, features, message } = req.body;
+  const { name, email, business, websiteType, features, message, estimate } = req.body;
 
   if (!name || !email || !websiteType || !message)
     return res.status(400).json({ error: 'Required fields are missing.' });
@@ -30,6 +30,7 @@ Email: ${email}
 Business/Organization: ${business || 'N/A'}
 Website Type: ${websiteType}
 Desired Features: ${features || 'N/A'}
+Estimated Price: ${estimate ? estimate + '€' : 'N/A'}
 
 Message:
 ${message}
@@ -44,28 +45,41 @@ ${message}
     });
 
     // Auto-reply to customer (English)
-    const autoReplyBody = `
-${name ? `Dear ${name},` : 'Dear Customer,'}
+    const autoReplyHTML = `
+  <div style="font-family: Arial, sans-serif; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+    <h2 style="color: #4CAF50;">CodedTogether</h2>
+    <p>Dear ${name || 'Customer'},</p>
 
-Thank you for contacting us and for your interest in building your website. We have received your request and will process it promptly.
+    <p>Thank you for contacting us and for your interest in building your website. We have received your request and will process it promptly.</p>
 
-✅ Payment Information:
-You will soon receive an offer with the total cost and payment details. The process will begin as soon as the deposit is completed.
+    <h3 style="margin-top: 30px;">💳 Payment Information</h3>
+    <p>You will soon receive a custom offer with the total cost and payment details. Work will begin as soon as the deposit is confirmed.</p>
 
-✅ What happens after payment:
-Once your payment is confirmed, we will immediately start working on your website and keep you updated on the progress or any clarifications needed.
+    <h3 style="margin-top: 30px;">🚀 What Happens Next</h3>
+    <ul>
+      <li>Once payment is completed, we will begin working on your website immediately.</li>
+      <li>You’ll receive updates at each milestone or if we need additional information.</li>
+      <li>Our team is available for any questions you may have.</li>
+    </ul>
 
-We are at your disposal for any questions or clarifications.
+    <h3>🧮 Estimated Cost</h3>
+    <p><strong>${estimate ? estimate + '€' : 'To be determined'}</strong></p>
 
-Best regards,
-Coded Together's team
-    `;
+
+    <p style="margin-top: 40px;">Best regards,<br><strong>The CodedTogether Team</strong></p>
+    <hr style="margin-top: 30px;" />
+    <p style="font-size: 12px; color: #888;">
+      This is an automated message confirming that we received your request.
+    </p>
+  </div>
+`;
+
 
     await transporter.sendMail({
       from: `"Website Order" <${process.env.EMAIL_USER}>`,
       to: email,
-      subject: 'Confirmation of Request Received - Website Development',
-      text: autoReplyBody,
+      subject: 'Confirmation of Request Received – Website Development',
+      html: autoReplyHTML,
     });
 
     res.json({ success: true });
