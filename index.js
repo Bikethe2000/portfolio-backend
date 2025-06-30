@@ -111,5 +111,47 @@ app.post('/create-payment-intent', async (req, res) => {
   }
 });
 
+app.post('/send-order-email', async (req, res) => {
+  const { email, packageName, amount } = req.body;
+
+  if (!email || !packageName || !amount) {
+    return res.status(400).json({ error: 'Missing required fields.' });
+  }
+
+  try {
+    const transporter = nodemailer.createTransport({
+      service: 'gmail',
+      auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS,
+      },
+    });
+
+    const mailBody = `
+New Website Order Paid
+
+Customer email: ${email}
+Package: ${packageName}
+Amount Paid: ${amount}€
+
+Please contact the customer to proceed.
+    `;
+
+    await transporter.sendMail({
+      from: `"Website Orders" <${process.env.EMAIL_USER}>`,
+      to: process.env.TO_EMAIL,
+      subject: `New Paid Order: ${packageName}`,
+      text: mailBody,
+      replyTo: email,
+    });
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to send notification email.' });
+  }
+});
+
+
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
