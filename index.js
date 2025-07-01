@@ -263,15 +263,74 @@ Please contact the customer to proceed.
     });
 
     // Δημιουργία περιεχομένου PDF
-    doc.fontSize(20).text('Invoice / Απόδειξη', { align: 'center' });
-    doc.moveDown();
-    doc.fontSize(14).text(`Order ID: ${orderId}`);
-    doc.text(`Package: ${packageName}`);
-    doc.text(`Amount Paid: ${amount}€`);
-    doc.text(`Date: ${new Date().toLocaleDateString()}`);
-    doc.moveDown();
-    doc.text('Thank you for your purchase! We will contact you shortly to start your project.');
+    doc
+      .fontSize(22)
+      .fillColor("#4CAF50")
+      .text("Invoice", { align: "center" })
+      .moveDown(1.5);
+
+    doc
+      .fontSize(12)
+      .fillColor("#000")
+      .text(`Order ID: ${orderId}`, { continued: true })
+      .text(`   Date: ${new Date().toLocaleDateString()}`, { align: "right" });
+
+    doc.moveDown(1);
+
+    // Γραμμή διαχωρισμού
+    doc
+      .strokeColor("#4CAF50")
+      .lineWidth(1)
+      .moveTo(doc.page.margins.left, doc.y)
+      .lineTo(doc.page.width - doc.page.margins.right, doc.y)
+      .stroke();
+
+    doc.moveDown(1);
+
+    doc
+      .fontSize(14)
+      .fillColor("#000")
+      .text("Package Details:", { underline: true })
+      .moveDown(0.5);
+
+    doc.fontSize(12).text(`Package Name: ${packageName}`);
+    doc.fontSize(12).text(`Amount Paid: ${amount} €`);
+
+    doc.moveDown(2);
+
+    doc
+      .fontSize(12)
+      .fillColor("#333")
+      .text(
+        "Thank you for your purchase! We appreciate your business and will contact you shortly to start your project.",
+        {
+          align: "center",
+          lineGap: 4,
+        }
+      );
+
+    doc.moveDown(2);
+
+    // Footer με διαχωριστική γραμμή και copyright
+    doc
+      .strokeColor("#ddd")
+      .lineWidth(0.5)
+      .moveTo(doc.page.margins.left, doc.page.height - 100)
+      .lineTo(doc.page.width - doc.page.margins.right, doc.page.height - 100)
+      .stroke();
+
+    doc
+      .fontSize(10)
+      .fillColor("#999")
+      .text(
+        "© " + new Date().getFullYear() + " CodedTogether. All rights reserved.",
+        doc.page.margins.left,
+        doc.page.height - 80,
+        { align: "center", width: doc.page.width - doc.page.margins.left - doc.page.margins.right }
+      );
+
     doc.end();
+
 
   } catch (err) {
     console.error(err);
