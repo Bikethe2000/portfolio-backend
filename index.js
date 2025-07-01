@@ -113,6 +113,62 @@ app.post('/create-payment-intent', async (req, res) => {
 
 const { v4: uuidv4 } = require("uuid");
 
+const PDFDocument = require("pdfkit");
+
+// Τιμές & πακέτα σταθερά (ακριβώς ίδια με frontend!)
+const options = {
+  "Landing Page (1–2 pages)": 400,
+  "Contact Form with Backend": 60,
+  "SEO Optimization & Setup": 120,
+  "Responsive Design (Mobile & Tablet)": 0,
+  "Admin Panel (Dashboard)": 250,
+  "Blog / CMS Integration": 180,
+  "Multilingual Site (GR/EN)": 150,
+  "Hosting + Domain Setup": 90,
+  "E-shop (with payments)": 1200,
+  "Dark Mode + UI Polish": 80,
+};
+
+const packages = {
+  Basic: [
+    "Landing Page (1–2 pages)",
+    "Contact Form with Backend",
+    "Responsive Design (Mobile & Tablet)",
+  ],
+  Business: [
+    "Landing Page (1–2 pages)",
+    "Contact Form with Backend",
+    "Responsive Design (Mobile & Tablet)",
+    "SEO Optimization & Setup",
+    "Blog / CMS Integration",
+    "Dark Mode + UI Polish",
+    "Hosting + Domain Setup",
+  ],
+  Pro: [
+    "Landing Page (1–2 pages)",
+    "Contact Form with Backend",
+    "Responsive Design (Mobile & Tablet)",
+    "SEO Optimization & Setup",
+    "Dark Mode + UI Polish",
+    "Hosting + Domain Setup",
+    "Admin Panel (Dashboard)",
+    "Multilingual Site (GR/EN)",
+    "E-shop (with payments)",
+  ],
+};
+
+// Endpoint για έλεγχο τιμής πακέτου
+app.post('/get-package-price', (req, res) => {
+  const { packageName } = req.body;
+  if (!packageName || !packages[packageName]) {
+    return res.status(400).json({ error: "Invalid package name" });
+  }
+  const features = packages[packageName];
+  const amount = features.reduce((sum, feat) => sum + (options[feat] || 0), 0);
+  res.json({ amount });
+});
+
+// Τροποποίηση του /send-order-email για PDF απόδειξη
 app.post("/send-order-email", async (req, res) => {
   const { email, packageName, amount } = req.body;
 
@@ -121,17 +177,24 @@ app.post("/send-order-email", async (req, res) => {
   }
 
   try {
-    const orderId = uuidv4(); // Δημιουργία μοναδικού Order ID
+    const orderId = uuidv4();
 
-    const transporter = nodemailer.createTransport({
-      service: "gmail",
-      auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS,
-      },
-    });
+    // Δημιουργία PDF απόδειξης στη μνήμη
+    const doc = new PDFDocument();
+    let buffers = [];
+    doc.on('data', buffers.push.bind(buffers));
+    doc.on('end', async () => {
+      const pdfData = Buffer.concat(buffers);
 
-    const adminMailBody = `
+      const transporter = nodemailer.createTransport({
+        service: "gmail",
+        auth: {
+          user: process.env.EMAIL_USER,
+          pass: process.env.EMAIL_PASS,
+        },
+      });
+
+      const adminMailBody = `
 New Website Order Paid<br/>
 <br/>
 <b>Order ID:</b> ${orderId}<br/>
@@ -142,7 +205,7 @@ New Website Order Paid<br/>
 Please contact the customer to proceed.
 `;
 
-    const customerMailBody = `
+      const customerMailBody = `
 <!DOCTYPE html>
 <html>
 <head>
@@ -172,22 +235,44 @@ Please contact the customer to proceed.
 </html>
 `;
 
-    await transporter.sendMail({
-      from: `"Website Orders" <${process.env.EMAIL_USER}>`,
-      to: process.env.TO_EMAIL,
-      subject: `New Paid Order: ${packageName} (Order ID: ${orderId})`,
-      html: adminMailBody.replace(/\n/g, "<br/>"),
-      replyTo: email,
+      // Στέλνουμε mail στον admin
+      await transporter.sendMail({
+        from: `"Website Orders" <${process.env.EMAIL_USER}>`,
+        to: process.env.TO_EMAIL,
+        subject: `New Paid Order: ${packageName} (Order ID: ${orderId})`,
+        html: adminMailBody.replace(/\n/g, "<br/>"),
+        replyTo: email,
+      });
+
+      // Στέλνουμε mail στον πελάτη με PDF συνημμένο
+      await transporter.sendMail({
+        from: `"CodedTogether" <${process.env.EMAIL_USER}>`,
+        to: email,
+        subject: `Thank you for your purchase! (Order ID: ${orderId})`,
+        html: customerMailBody,
+        attachments: [
+          {
+            filename: `Invoice-${orderId}.pdf`,
+            content: pdfData,
+            contentType: 'application/pdf',
+          },
+        ],
+      });
+
+      res.json({ success: true, orderId });
     });
 
-    await transporter.sendMail({
-      from: `"CodedTogether" <${process.env.EMAIL_USER}>`,
-      to: email,
-      subject: `Thank you for your purchase! (Order ID: ${orderId})`,
-      html: customerMailBody,
-    });
+    // Δημιουργία περιεχομένου PDF
+    doc.fontSize(20).text('Invoice / Απόδειξη', { align: 'center' });
+    doc.moveDown();
+    doc.fontSize(14).text(`Order ID: ${orderId}`);
+    doc.text(`Package: ${packageName}`);
+    doc.text(`Amount Paid: ${amount}€`);
+    doc.text(`Date: ${new Date().toLocaleDateString()}`);
+    doc.moveDown();
+    doc.text('Thank you for your purchase! We will contact you shortly to start your project.');
+    doc.end();
 
-    res.json({ success: true, orderId });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Failed to send notification email." });
